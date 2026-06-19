@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sıfır Kurulumlu Excel Dosya Yöneticisi</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS Library for Reading and Writing Excel Files Locally -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col overflow-hidden">
+
+    <!-- Global Alert Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- Main Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 px-6 py-4 flex items-center justify-between shadow-xs">
+        <div class="flex items-center gap-3">
+            <div class="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
+                <i data-lucide="file-spreadsheet" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-bold text-slate-900 md:text-lg">Yerel Excel Editörü & Dosya Yöneticisi</h1>
+                <p class="text-xs text-slate-400">Sunucu veya API gerektirmez, tamamen tarayıcınızda güvenle çalışır</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Custom Styled File Input Action -->
+            <label class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 shadow-md shadow-blue-500/10">
+                <i data-lucide="upload" class="w-4 h-4"></i>
+                Excel Dosyası Ekle
+                <input type="file" id="file-uploader" class="hidden" accept=".xlsx, .xls, .csv" multiple>
+            </label>
+            <button id="btn-export" class="hidden bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all flex items-center gap-2 shadow-md shadow-emerald-500/10">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                Değişikliklerle İndir
+            </button>
+        </div>
+    </header>
+
+    <!-- App Body Container -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar: Menu Structure for Uploaded Files & Sheets -->
+        <aside class="w-80 bg-white border-r border-slate-200 flex flex-col shrink-0">
+            <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Aktif Dosyalarınız</span>
+                <span id="file-count" class="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-semibold">0</span>
+            </div>
+            
+            <!-- Navigation Tree Container -->
+            <div class="flex-1 overflow-y-auto p-3 space-y-2" id="navigation-tree">
+                <!-- Dropzone Area when no files loaded -->
+                <div id="empty-sidebar-dropzone" class="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400 text-sm hover:border-blue-400 hover:text-slate-600 transition-colors cursor-pointer">
+                    <i data-lucide="cloud-lightning" class="w-10 h-10 mx-auto mb-3 text-slate-300"></i>
+                    <p class="font-medium mb-1">Dosya Sürükleyin</p>
+                    <p class="text-xs text-slate-400">Veya yukarıdaki "Dosya Ekle" butonunu kullanın</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content: Excel Grid View -->
+        <main class="flex-1 flex flex-col bg-slate-100 overflow-hidden relative">
+            
+            <!-- Toolbar for spreadsheet actions -->
+            <div id="grid-toolbar" class="hidden bg-white border-b border-slate-200 p-3 flex-wrap items-center justify-between gap-3 shadow-xs">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button id="btn-add-row" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 border border-slate-200">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Satır Ekle
+                    </button>
+                    <button id="btn-add-col" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 border border-slate-200">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Sütun Ekle
+                    </button>
+                    <span class="h-6 w-[1px] bg-slate-200 mx-1"></span>
+                    <button id="btn-delete-row" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 border border-red-100">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Seçili Satırı Sil
+                    </button>
+                </div>
+
+                <div class="text-xs text-slate-500 font-medium flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                    <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                    Hücreye çift tıklayarak düzenleyebilir ve tipini seçebilirsiniz.
+                </div>
+            </div>
+
+            <!-- Spreadsheet Grid Container -->
+            <div class="flex-1 overflow-auto p-6" id="grid-container">
+                <!-- Initial Welcome Message -->
+                <div id="welcome-message" class="h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto">
+                    <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-4 shadow-sm">
+                        <i data-lucide="shield-check" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 mb-1">Yerel ve %100 Güvenli Düzenleyici</h3>
+                    <p class="text-sm text-slate-500 mb-4">Verileriniz hiçbir sunucuya yüklenmez, her şey bilgisayarınızda işlenir. Bir Excel dosyası seçerek başlayın.</p>
+                    <button onclick="triggerFileUploader()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-xs font-semibold transition-all">
+                        Örnek Dosya Seç
+                    </button>
+                </div>
+
+                <!-- Actual Data Table -->
+                <div id="table-wrapper" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden max-w-full">
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-left text-sm" id="data-table">
+                            <!-- Generated Dynamically -->
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Status Indicator -->
+            <div id="status-bar" class="bg-white border-t border-slate-200 px-6 py-2 text-xs text-slate-400 flex justify-between items-center hidden">
+                <span id="file-info-label">Dosya seçilmedi</span>
+                <span id="save-status-label" class="text-slate-400">Değişiklik durumu: Temiz</span>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Cell Modal -->
+    <div id="cell-edit-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-100">
+            <div class="flex items-center justify-between mb-4 border-b pb-3">
+                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="edit-3" class="w-4 h-4 text-blue-600"></i>
+                    Hücreyi Düzenle <span id="cell-address-label" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-mono">A1</span>
+                </h3>
+                <button id="btn-close-edit" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Veri Tipi</label>
+                    <select id="cell-data-type" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                        <option value="string">Metin (String)</option>
+                        <option value="number">Sayı (Number)</option>
+                        <option value="date">Tarih (Date)</option>
+                        <option value="boolean">Mantıksal (Boolean)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Değer</label>
+                    <div id="cell-input-container">
+                        <!-- Dynamic inputs rendered here depending on selected data type -->
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2 border-t mt-4">
+                    <button id="btn-cancel-cell-edit" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">Vazgeç</button>
+                    <button id="btn-save-cell-edit" class="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors">Uygula</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State variables
+        let uploadedFiles = {}; // Structure: { fileId: { name: "", sheetNames: [], sheetsData: { sheetName: [[]] }, colTypes: { sheetName: [] } } }
+        let activeFileId = null;
+        let activeSheetName = null;
+        let selectedCell = { row: null, col: null };
+        let selectedRowIndex = null;
+        let fileCounterId = 0;
+
+        // UI Element selectors
+        const fileUploader = document.getElementById('file-uploader');
+        const navigationTree = document.getElementById('navigation-tree');
+        const fileCountBadge = document.getElementById('file-count');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const tableWrapper = document.getElementById('table-wrapper');
+        const dataTable = document.getElementById('data-table');
+        const gridToolbar = document.getElementById('grid-toolbar');
+        const statusBar = document.getElementById('status-bar');
+        const fileInfoLabel = document.getElementById('file-info-label');
+        const saveStatusLabel = document.getElementById('save-status-label');
+        const btnExport = document.getElementById('btn-export');
+
+        const btnAddRow = document.getElementById('btn-add-row');
+        const btnAddCol = document.getElementById('btn-add-col');
+        const btnDeleteRow = document.getElementById('btn-delete-row');
+
+        // Modal elements
+        const cellEditModal = document.getElementById('cell-edit-modal');
+        const cellAddressLabel = document.getElementById('cell-address-label');
+        const cellDataTypeSelect = document.getElementById('cell-data-type');
+        const cellInputContainer = document.getElementById('cell-input-container');
+        const btnCloseEdit = document.getElementById('btn-close-edit');
+        const btnCancelCellEdit = document.getElementById('btn-cancel-cell-edit');
+        const btnSaveCellEdit = document.getElementById('btn-save-cell-edit');
+
+        // Helper: Trigger standard file select click
+        function triggerFileUploader() {
+            fileUploader.click();
+        }
+
+        // Helper: Show standard non-intrusive alert toast message
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg border text-sm transition-all transform duration-300 translate-y-2 opacity-0 ${
+                type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' :
+                type === 'error' ? 'bg-rose-50 border-rose-100 text-rose-800' : 'bg-blue-50 border-blue-100 text-blue-800'
+            }`;
+            
+            const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'alert-triangle' : 'info';
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-4.5 h-4.5 shrink-0"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // File selection handler
+        fileUploader.addEventListener('change', (e) => {
+            handleUploadedFiles(e.target.files);
+        });
+
+        // Dropzone drag-drop configuration
+        const sidebarDropzone = document.getElementById('empty-sidebar-dropzone');
+        if (sidebarDropzone) {
+            sidebarDropzone.addEventListener('click', triggerFileUploader);
+        }
+
+        // Allow dragging files over entire sidebar
+        document.querySelector('aside').addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        document.querySelector('aside').addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                handleUploadedFiles(e.dataTransfer.files);
+            }
+        });
+
+        // Read uploaded files locally via SheetJS
+        function handleUploadedFiles(files) {
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                        
+                        const fileId = `file_${++fileCounterId}`;
+                        const sheetNames = workbook.SheetNames;
+                        const sheetsData = {};
+                        const colTypes = {};
+
+                        sheetNames.forEach(sheetName => {
+                            const worksheet = workbook.Sheets[sheetName];
+                            // Parse sheet to 2D Array
+                            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+                            
+                            // If empty, supply starting framework
+                            sheetsData[sheetName] = jsonData.length > 0 ? jsonData : [["Sütun 1", "Sütun 2"], ["", ""]];
+                            
+                            // Guess initial types per column
+                            const totalCols = sheetsData[sheetName][0] ? sheetsData[sheetName][0].length : 2;
+                            colTypes[sheetName] = new Array(totalCols).fill('string');
+                            guessColumnTypesForSheet(sheetsData[sheetName], colTypes[sheetName]);
+                        });
+
+                        uploadedFiles[fileId] = {
+                            name: file.name,
+                            sheetNames: sheetNames,
+                            sheetsData: sheetsData,
+                            colTypes: colTypes,
+                            isModified: false
+                        };
+
+                        showNotification(`"${file.name}" başarıyla eklendi!`);
+                        renderSidebarMenu();
+                        
+                        // Auto-select first worksheet of newly loaded file if nothing active
+                        if (!activeFileId) {
+                            selectWorksheet(fileId, sheetNames[0]);
+                        }
+
+                    } catch (error) {
+                        console.error(error);
+                        showNotification(`"${file.name}" ayrıştırılamadı: ${error.message}`, 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+            fileUploader.value = ''; // Clean input
+        }
+
+        // Guess dynamic datatype structures based on spreadsheet patterns
+        function guessColumnTypesForSheet(sheetArray, colTypesArray) {
+            if (sheetArray.length <= 1) return;
+            const numCols = colTypesArray.length;
+
+            for (let c = 0; c < numCols; c++) {
+                let numericCount = 0;
+                let dateCount = 0;
+                let boolCount = 0;
+                let validRows = 0;
+
+                for (let r = 1; r < sheetArray.length; r++) {
+                    const val = String(sheetArray[r][c] || '').trim();
+                    if (!val) continue;
+                    validRows++;
+
+                    if (!isNaN(val) && !isNaN(parseFloat(val))) {
+                        numericCount++;
+                    } else if (!isNaN(Date.parse(val)) && (val.includes('-') || val.includes('/'))) {
+                        dateCount++;
+                    } else if (val.toLowerCase() === 'true' || val.toLowerCase() === 'false') {
+                        boolCount++;
+                    }
+                }
+
+                if (validRows > 0) {
+                    if (numericCount / validRows > 0.7) colTypesArray[c] = 'number';
+                    else if (dateCount / validRows > 0.7) colTypesArray[c] = 'date';
+                    else if (boolCount / validRows > 0.7) colTypesArray[c] = 'boolean';
+                }
+            }
+        }
+
+        // Generate nested folder & file hierarchy representation in sidebar
+        function renderSidebarMenu() {
+            const keys = Object.keys(uploadedFiles);
+            fileCountBadge.textContent = keys.length;
+
+            if (keys.length === 0) {
+                navigationTree.innerHTML = `
+                    <div id="empty-sidebar-dropzone" class="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400 text-sm hover:border-blue-400 hover:text-slate-600 transition-colors cursor-pointer">
+                        <i data-lucide="cloud-lightning" class="w-10 h-10 mx-auto mb-3 text-slate-300"></i>
+                        <p class="font-medium mb-1">Dosya Sürükleyin</p>
+                        <p class="text-xs text-slate-400">Veya yukarıdaki "Dosya Ekle" butonunu kullanın</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                
+                // Re-bind click event to newly created empty dropzone
+                document.getElementById('empty-sidebar-dropzone').addEventListener('click', triggerFileUploader);
+                return;
+            }
+
+            navigationTree.innerHTML = '';
+
+            keys.forEach(fileId => {
+                const fileObj = uploadedFiles[fileId];
+                
+                const fileContainer = document.createElement('div');
+                fileContainer.className = 'border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs';
+
+                // File main node
+                const fileHeader = document.createElement('div');
+                fileHeader.className = 'w-full px-4 py-3 text-left font-semibold text-slate-700 flex items-center justify-between hover:bg-slate-50 transition-colors focus:outline-none cursor-pointer';
+                
+                // Track modified status star
+                const modifiedIndicator = fileObj.isModified ? '<span class="text-amber-500 font-bold ml-1" title="Kaydedilmemiş değişiklikler var">*</span>' : '';
+
+                fileHeader.innerHTML = `
+                    <div class="flex items-center gap-2.5 truncate">
+                        <i data-lucide="file-spreadsheet" class="w-4.5 h-4.5 text-emerald-600 shrink-0"></i>
+                        <span class="truncate text-sm font-medium" title="${fileObj.name}">${fileObj.name}${modifiedIndicator}</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button class="text-slate-300 hover:text-red-500 p-1 rounded transition-colors delete-file-btn" data-id="${fileId}" title="Dosyayı Kapat">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 transition-transform dropdown-chevron ${activeFileId === fileId ? 'rotate-90' : ''}"></i>
+                    </div>
+                `;
+
+                // Sheets submenu container
+                const sheetSubmenu = document.createElement('div');
+                sheetSubmenu.className = `${activeFileId === fileId ? '' : 'hidden'} bg-slate-50 border-t border-slate-100 py-1 pl-2`;
+
+                // Render each sheet
+                fileObj.sheetNames.forEach(sheetName => {
+                    const isSelected = (activeFileId === fileId && activeSheetName === sheetName);
+                    const sheetItem = document.createElement('button');
+                    sheetItem.className = `w-full text-left py-2 px-6 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 focus:outline-none ${
+                        isSelected ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50/50'
+                    }`;
+                    sheetItem.innerHTML = `
+                        <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                        <span class="truncate">${sheetName}</span>
+                    `;
+
+                    sheetItem.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectWorksheet(fileId, sheetName);
+                    });
+
+                    sheetSubmenu.appendChild(sheetItem);
+                });
+
+                // Toggle menu on click
+                fileHeader.addEventListener('click', (e) => {
+                    if (e.target.closest('.delete-file-btn')) return; // Avoid toggle on delete click
+                    
+                    const isCurrentlyHidden = sheetSubmenu.classList.contains('hidden');
+                    if (isCurrentlyHidden) {
+                        sheetSubmenu.classList.remove('hidden');
+                        fileHeader.querySelector('.dropdown-chevron').classList.add('rotate-90');
+                    } else {
+                        sheetSubmenu.classList.add('hidden');
+                        fileHeader.querySelector('.dropdown-chevron').classList.remove('rotate-90');
+                    }
+                });
+
+                // Delete file operation
+                fileHeader.querySelector('.delete-file-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const targetId = e.currentTarget.getAttribute('data-id');
+                    
+                    if (uploadedFiles[targetId].isModified) {
+                        if (!confirm(`"${uploadedFiles[targetId].name}" üzerinde kaydedilmemiş değişiklikler var. Dosyayı kapatmak istediğinizden emin misiniz?`)) {
+                            return;
+                        }
+                    }
+
+                    delete uploadedFiles[targetId];
+                    if (activeFileId === targetId) {
+                        activeFileId = null;
+                        activeSheetName = null;
+                        welcomeMessage.classList.remove('hidden');
+                        tableWrapper.classList.add('hidden');
+                        gridToolbar.classList.add('hidden');
+                        statusBar.classList.add('hidden');
+                        btnExport.classList.add('hidden');
+                    }
+                    
+                    showNotification('Dosya kapatıldı.');
+                    renderSidebarMenu();
+                });
+
+                fileContainer.appendChild(fileHeader);
+                fileContainer.appendChild(sheetSubmenu);
+                navigationTree.appendChild(fileContainer);
+            });
+
+            lucide.createIcons();
+        }
+
+        // Change grid and active state details to selected worksheet representation
+        function selectWorksheet(fileId, sheetName) {
+            activeFileId = fileId;
+            activeSheetName = sheetName;
+            selectedRowIndex = null;
+
+            const fileObj = uploadedFiles[fileId];
+            const data = fileObj.sheetsData[sheetName];
+            const colTypes = fileObj.colTypes[sheetName];
+
+            welcomeMessage.classList.add('hidden');
+            gridToolbar.classList.remove('hidden');
+            tableWrapper.classList.remove('hidden');
+            statusBar.classList.remove('hidden');
+            btnExport.classList.remove('hidden');
+
+            renderSpreadsheetGrid(data, colTypes);
+            renderSidebarMenu(); // Refresh highlight active state in sidebar
+
+            fileInfoLabel.textContent = `${fileObj.name} > ${sheetName}`;
+            updateStatusLabel();
+        }
+
+        // Update visual display of the active spreadsheet modifications
+        function updateStatusLabel() {
+            const fileObj = uploadedFiles[activeFileId];
+            if (fileObj && fileObj.isModified) {
+                saveStatusLabel.textContent = 'Değişiklik durumu: Kaydedilmemiş Değişiklikler Var!';
+                saveStatusLabel.className = 'text-amber-500 font-bold';
+            } else {
+                saveStatusLabel.textContent = 'Değişiklik durumu: Tüm değişiklikler korundu';
+                saveStatusLabel.className = 'text-slate-400 font-medium';
+            }
+        }
+
+        // Generate dynamic and interactive Grid representation
+        function renderSpreadsheetGrid(gridData, colTypes) {
+            dataTable.innerHTML = '';
+            if (gridData.length === 0) return;
+
+            // Generate header
+            const headerRow = document.createElement('tr');
+            headerRow.className = 'bg-slate-50 border-b border-slate-200';
+            
+            // Corner static cell select node
+            const cornerCell = document.createElement('th');
+            cornerCell.className = 'p-2 text-center text-xs font-semibold text-slate-400 bg-slate-100 border-r border-slate-200 w-10 select-none';
+            cornerCell.textContent = '#';
+            headerRow.appendChild(cornerCell);
+
+            const numColumns = gridData[0] ? gridData[0].length : 0;
+            for (let c = 0; c < numColumns; c++) {
+                const th = document.createElement('th');
+                th.className = 'p-3 text-xs font-semibold text-slate-600 border-r border-slate-200 select-none min-w-[120px]';
+                
+                const headerLetter = getColumnLetter(c + 1);
+                const headerText = gridData[0][c] !== undefined ? gridData[0][c] : '';
+                
+                th.innerHTML = `
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-[10px] text-slate-400 font-mono">${headerLetter}</span>
+                        <div class="flex items-center justify-between">
+                            <span class="truncate block font-bold" title="${headerText}">${headerText}</span>
+                            <span class="text-[9px] px-1 bg-slate-100 text-slate-500 rounded uppercase font-semibold border">${colTypes[c] || 'string'}</span>
+                        </div>
+                    </div>
+                `;
+                headerRow.appendChild(th);
+            }
+            dataTable.appendChild(headerRow);
+
+            // Generate Table Rows
+            for (let r = 1; r < gridData.length; r++) {
+                const row = document.createElement('tr');
+                row.className = `border-b border-slate-100 hover:bg-slate-50/50 transition-colors ${selectedRowIndex === r ? 'bg-amber-50/50' : ''}`;
+                
+                // Left sequence indicators
+                const indexCell = document.createElement('td');
+                indexCell.className = 'p-2 text-center text-xs font-mono font-medium text-slate-400 bg-slate-50 border-r border-slate-200 cursor-pointer select-none';
+                indexCell.textContent = r;
+                
+                indexCell.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectedRowIndex = (selectedRowIndex === r) ? null : r;
+                    renderSpreadsheetGrid(gridData, colTypes);
+                });
+                row.appendChild(indexCell);
+
+                // Add grid value cell blocks
+                for (let c = 0; c < numColumns; c++) {
+                    const td = document.createElement('td');
+                    td.className = 'p-3 border-r border-slate-200 text-sm whitespace-nowrap overflow-hidden max-w-[200px] truncate cursor-pointer hover:bg-blue-50/20';
+                    
+                    const cellVal = gridData[r][c];
+                    
+                    // Display string formatting
+                    if (cellVal instanceof Date) {
+                        // Formatting Javascript dates nicely
+                        td.textContent = cellVal.toLocaleDateString('tr-TR');
+                        td.classList.add('font-mono');
+                    } else {
+                        td.textContent = (cellVal === undefined || cellVal === null) ? '' : cellVal;
+                    }
+
+                    // Apply layout alignments depending on types
+                    if (colTypes[c] === 'number') {
+                        td.classList.add('text-right', 'font-mono');
+                    } else if (colTypes[c] === 'boolean') {
+                        const isTrue = String(cellVal).toLowerCase() === 'true';
+                        td.classList.add('text-center', 'font-semibold', isTrue ? 'text-emerald-600' : 'text-slate-500');
+                    } else if (colTypes[c] === 'date') {
+                        td.classList.add('font-mono');
+                    }
+
+                    // Double click modal trigger
+                    td.addEventListener('dblclick', () => {
+                        openCellEditModal(r, c);
+                    });
+
+                    row.appendChild(td);
+                }
+                dataTable.appendChild(row);
+            }
+        }
+
+        // Decimal index representation to Column letters
+        function getColumnLetter(colNum) {
+            let letter = '';
+            while (colNum > 0) {
+                let temp = (colNum - 1) % 26;
+                letter = String.fromCharCode(65 + temp) + letter;
+                colNum = (colNum - temp - 1) / 26;
+            }
+            return letter;
+        }
+
+        // Trigger specific cell metadata edit popup
+        function openCellEditModal(row, col) {
+            selectedCell.row = row;
+            selectedCell.col = col;
+
+            const letter = getColumnLetter(col + 1);
+            cellAddressLabel.textContent = `${letter}${row}`;
+
+            const fileObj = uploadedFiles[activeFileId];
+            const currentType = fileObj.colTypes[activeSheetName][col] || 'string';
+            
+            cellDataTypeSelect.value = currentType;
+            updateModalInputField();
+            
+            cellEditModal.classList.remove('hidden');
+        }
+
+        // Watch type select to dynamically adapt form input components
+        cellDataTypeSelect.addEventListener('change', () => {
+            updateModalInputField();
+        });
+
+        // Set layout inputs inside modal based on datatype parameter selections
+        function updateModalInputField() {
+            cellInputContainer.innerHTML = '';
+            const type = cellDataTypeSelect.value;
+            
+            const fileObj = uploadedFiles[activeFileId];
+            let currentVal = fileObj.sheetsData[activeSheetName][selectedCell.row][selectedCell.col];
+            
+            if (currentVal === undefined || currentVal === null) {
+                currentVal = '';
+            }
+
+            // Convert Dates to ISO standard representations for standard Date Inputs
+            if (currentVal instanceof Date) {
+                currentVal = currentVal.toISOString().split('T')[0];
+            }
+
+            if (type === 'number') {
+                cellInputContainer.innerHTML = `
+                    <input type="number" id="cell-value-field" value="${currentVal}" step="any"
+                        class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono">
+                `;
+            } else if (type === 'boolean') {
+                const isChecked = String(currentVal).toLowerCase() === 'true';
+                cellInputContainer.innerHTML = `
+                    <div class="flex items-center gap-2 py-2">
+                        <input type="checkbox" id="cell-value-field" ${isChecked ? 'checked' : ''} 
+                            class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                        <label for="cell-value-field" class="text-sm text-slate-700">Doğru / True</label>
+                    </div>
+                `;
+            } else if (type === 'date') {
+                cellInputContainer.innerHTML = `
+                    <input type="date" id="cell-value-field" value="${currentVal}"
+                        class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono">
+                `;
+            } else {
+                cellInputContainer.innerHTML = `
+                    <textarea id="cell-value-field" rows="3" 
+                        class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">${currentVal}</textarea>
+                `;
+            }
+        }
+
+        // Apply input modifications back to localized worksheets variables cache
+        btnSaveCellEdit.addEventListener('click', () => {
+            const field = document.getElementById('cell-value-field');
+            const newType = cellDataTypeSelect.value;
+            let finalValue = '';
+
+            if (newType === 'boolean') {
+                finalValue = field.checked ? 'TRUE' : 'FALSE';
+            } else if (newType === 'number') {
+                finalValue = field.value !== '' ? parseFloat(field.value) : '';
+            } else if (newType === 'date') {
+                finalValue = field.value !== '' ? new Date(field.value) : '';
+            } else {
+                finalValue = field.value;
+            }
+
+            const fileObj = uploadedFiles[activeFileId];
+            
+            // Apply variables
+            fileObj.sheetsData[activeSheetName][selectedCell.row][selectedCell.col] = finalValue;
+            fileObj.colTypes[activeSheetName][selectedCell.col] = newType;
+            fileObj.isModified = true;
+
+            cellEditModal.classList.add('hidden');
+            
+            // Re-render
+            renderSpreadsheetGrid(fileObj.sheetsData[activeSheetName], fileObj.colTypes[activeSheetName]);
+            updateStatusLabel();
+            renderSidebarMenu(); // Add asterisk to filename on sidebar
+            showNotification('Değişiklik yerel belleğe işlendi.');
+        });
+
+        // Close cell action listeners
+        btnCloseEdit.addEventListener('click', () => cellEditModal.classList.add('hidden'));
+        btnCancelCellEdit.addEventListener('click', () => cellEditModal.classList.add('hidden'));
+
+        // Toolbar: Add row representation
+        btnAddRow.addEventListener('click', () => {
+            if (!activeFileId || !activeSheetName) return;
+
+            const fileObj = uploadedFiles[activeFileId];
+            const data = fileObj.sheetsData[activeSheetName];
+            const numCols = data[0].length;
+            
+            const newRow = new Array(numCols).fill('');
+            data.push(newRow);
+            
+            fileObj.isModified = true;
+            renderSpreadsheetGrid(data, fileObj.colTypes[activeSheetName]);
+            updateStatusLabel();
+            renderSidebarMenu();
+            showNotification('Yeni satır eklendi.');
+        });
+
+        // Toolbar: Add Column representation
+        btnAddCol.addEventListener('click', () => {
+            if (!activeFileId || !activeSheetName) return;
+
+            const newColName = prompt('Yeni sütun ismi giriniz:', `Sütun_${uploadedFiles[activeFileId].sheetsData[activeSheetName][0].length + 1}`);
+            if (newColName === null) return; // Action Cancelled
+
+            const finalColName = newColName.trim() || `Sütun_${uploadedFiles[activeFileId].sheetsData[activeSheetName][0].length + 1}`;
+
+            const fileObj = uploadedFiles[activeFileId];
+            const data = fileObj.sheetsData[activeSheetName];
+
+            // Push to header
+            data[0].push(finalColName);
+
+            // Push spaces to standard rows
+            for (let r = 1; r < data.length; r++) {
+                data[r].push('');
+            }
+
+            fileObj.colTypes[activeSheetName].push('string');
+            fileObj.isModified = true;
+
+            renderSpreadsheetGrid(data, fileObj.colTypes[activeSheetName]);
+            updateStatusLabel();
+            renderSidebarMenu();
+            showNotification('Yeni sütun başarıyla eklendi.');
+        });
+
+        // Toolbar: Remove Selected Row representation
+        btnDeleteRow.addEventListener('click', () => {
+            if (selectedRowIndex === null) {
+                showNotification('Lütfen silmek istediğiniz satırın en solundaki numaraya (#) tıklayarak seçin.', 'error');
+                return;
+            }
+
+            if (confirm(`${selectedRowIndex}. satırı kalıcı olarak silmek istiyor musunuz?`)) {
+                const fileObj = uploadedFiles[activeFileId];
+                fileObj.sheetsData[activeSheetName].splice(selectedRowIndex, 1);
+                
+                selectedRowIndex = null; // Clean selection
+                fileObj.isModified = true;
+
+                renderSpreadsheetGrid(fileObj.sheetsData[activeSheetName], fileObj.colTypes[activeSheetName]);
+                updateStatusLabel();
+                renderSidebarMenu();
+                showNotification('Satır listeden kaldırıldı.');
+            }
+        });
+
+        // Compile binary file via SheetJS and download directly to computer
+        btnExport.addEventListener('click', () => {
+            if (!activeFileId) return;
+
+            try {
+                const fileObj = uploadedFiles[activeFileId];
+                const newWorkbook = XLSX.utils.book_new();
+
+                // Append modified worksheet instances back to temporary output workbook structure
+                fileObj.sheetNames.forEach(sheetName => {
+                    const dataMatrix = fileObj.sheetsData[sheetName];
+                    const worksheet = XLSX.utils.aoa_to_sheet(dataMatrix);
+                    XLSX.utils.book_append_sheet(newWorkbook, worksheet, sheetName);
+                });
+
+                // Write and trigger download trigger
+                XLSX.writeFile(newWorkbook, `Düzenlenmiş_${fileObj.name}`);
+                
+                // Clear modification warning
+                fileObj.isModified = false;
+                updateStatusLabel();
+                renderSidebarMenu();
+                showNotification('Dosya başarıyla derlendi ve indirildi!');
+                
+            } catch (error) {
+                console.error(error);
+                showNotification('Yazma hatası oluştu: ' + error.message, 'error');
+            }
+        });
+
+        // Initialize icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
