@@ -1,54 +1,52 @@
-# Local Web Excel Editor
+# Excel Web Düzenleyici (Excel Web Editor)
 
-A lightweight, local-first web application that allows you to manage multiple Excel files directly in your browser. It provides an intuitive sidebar navigation for files and their internal worksheets, along with a powerful grid interface for real-time data editing, type management, and row/column manipulation.
+Excel Tarayıcı Düzenleyici, Excel dosyalarınızı doğrudan tarayıcınız üzerinden yönetmenizi sağlayan, kurulum gerektirmeyen ve tamamen yerel çalışan bir web uygulamasıdır. Dosyalarınızı ve içlerindeki çalışma sayfalarını (worksheets) kolayca listelemenize, verileri düzenlemenize ve veri tiplerini yönetmenize olanak tanır.
 
-## 🚀 Features
+## 🚀 Öne Çıkan Özellikler
 
-* **Local-First Processing:** No backend, no API keys, and no server-side storage. All data is processed locally in your browser for maximum privacy.
-* **Hierarchical Navigation:** Load multiple Excel files and manage them using a clean sidebar menu. Each file expands to show its worksheets as sub-menus.
-* **Dynamic Data Editing:**
-* Edit cell content directly in a spreadsheet-like interface.
-* Change cell data types (String, Number, Date, Boolean) on the fly.
-* Input fields automatically adapt to the selected data type.
-
-
-* **Structural Control:** Easily add or remove rows and columns with a simple click.
-* **Export Capabilities:** Download your modified work back as an `.xlsx` file with all changes preserved.
-
-## 🛠 Tech Stack
-
-* **HTML5/CSS3:** Responsive layout using Tailwind CSS.
-* **JavaScript (Vanilla):** Logic for file handling and data manipulation.
-* **SheetJS (xlsx):** Industry-standard library for reading and writing Excel files.
-* **Lucide Icons:** Modern iconography for a sleek UI.
-
-## 📦 How to Use
-
-1. **Clone or Download:** Clone this repository to your local machine.
-2. **Open:** Simply open the `index.html` file in any modern web browser (Chrome, Firefox, Edge).
-3. **Upload:** Use the "Upload Files" area to drop your Excel files.
-4. **Edit:**
-* Select a file from the sidebar.
-* Select a worksheet to load the data grid.
-* Double-click any cell to edit its content or change its data type.
-* Use the toolbar to add rows/columns or delete selected data.
+* **Yerel Çalışma (Local-First):** Verileriniz asla internete yüklenmez. Tüm işlemler tarayıcınızın kendi gücüyle yapılır, bu sayede verileriniz %100 güvendedir.
+* **Hiyerarşik Gezinti:** Birden fazla Excel dosyasını sisteme ekleyebilir, sol taraftaki menü üzerinden dosyaları ve içerisindeki çalışma sayfalarını kolayca yönetebilirsiniz.
+* **Dinamik Veri Düzenleme:**
+* Hücreleri doğrudan tablo üzerinde düzenleyin.
+* Hücrelerin veri tiplerini (Metin, Sayı, Tarih, Mantıksal) anlık olarak değiştirin.
+* Veri tipine göre otomatik uyum sağlayan giriş alanları ile hata payını düşürün.
 
 
-5. **Save:** Click the "Download" button to save your changes to your local machine.
+* **Yapısal Kontrol:** İhtiyacınıza göre kolayca satır ve sütun ekleyip çıkarabilirsiniz.
+* **Dışa Aktarma:** Yaptığınız tüm değişiklikleri orijinal Excel formatında bilgisayarınıza geri indirebilirsiniz.
 
-## 📋 Project Structure
+## 🛠 Kullanılan Teknolojiler
+
+* **HTML5/CSS3:** Tailwind CSS ile oluşturulmuş modern ve duyarlı arayüz.
+* **JavaScript (Vanilla):** Dosya işleme ve veri yönetimi için optimize edilmiş temiz kod yapısı.
+* **SheetJS (xlsx):** Excel dosyalarını okuma ve yazma işlemlerinde endüstri standardı kütüphane.
+* **Lucide Icons:** Modern ve şık simge seti.
+
+## 📦 Nasıl Kullanılır?
+
+1. **Dosyayı Açın:** Proje dosyalarınızı indirin ve `index.html` dosyasını favori web tarayıcınızda (Chrome, Firefox, Edge) açın.
+2. **Yükleme:** Excel dosyalarınızı uygulama içerisindeki yükleme alanına sürükleyip bırakın.
+3. **Düzenleme:**
+* Sol menüden bir dosya ve ardından bir çalışma sayfası seçin.
+* Bir hücreyi düzenlemek için üzerine çift tıklayın, değerini ve veri tipini güncelleyin.
+* Araç çubuğunu kullanarak satır/sütun ekleme veya silme işlemlerini gerçekleştirin.
+
+
+4. **Kaydetme:** "İndir" butonuna tıklayarak yaptığınız değişikliklerle birlikte dosyayı bilgisayarınıza kaydedin.
+
+## 📋 Proje Yapısı
 
 ```text
 /
-├── index.html       # Main application interface and logic
+└── index.html       # Ana uygulama arayüzü ve tüm mantık
 
 ```
 
-## ⚠️ Important Notes
+## ⚠️ Önemli Notlar
 
-* **Data Privacy:** This application performs all operations client-side. No data is sent to external servers. Your files remain on your computer.
-* **Browser Support:** Please use a modern, up-to-date web browser to ensure full compatibility with the File System and Web APIs used.
+* **Veri Gizliliği:** Uygulama tüm işlemlerini istemci tarafında (tarayıcınızda) gerçekleştirir. Hiçbir veriniz sunucuya gönderilmez.
+* **Tarayıcı Desteği:** En iyi performans ve özellik uyumluluğu için güncel bir web tarayıcısı kullanmanız önerilir.
 
-## 📄 License
+## 📄 Lisans
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+Bu proje MIT Lisansı altında lisanslanmıştır. Detaylar için `LICENSE` dosyasına bakabilirsiniz.
