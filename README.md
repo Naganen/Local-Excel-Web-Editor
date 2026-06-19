@@ -1,6 +1,6 @@
 # Excel Web Düzenleyici (Excel Web Editor)
 
-https://naganen.github.io/Local-Web-Excel-Editor/
+https://naganen.github.io/Local-Excel-Web-Editor/
 
 Excel Tarayıcı Düzenleyici, Excel dosyalarınızı doğrudan tarayıcınız üzerinden yönetmenizi sağlayan, kurulum gerektirmeyen ve tamamen yerel çalışan bir web uygulamasıdır. Dosyalarınızı ve içlerindeki çalışma sayfalarını (worksheets) kolayca listelemenize, verileri düzenlemenize ve veri tiplerini yönetmenize olanak tanır.
 
